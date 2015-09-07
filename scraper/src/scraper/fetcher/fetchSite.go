@@ -5,6 +5,7 @@ import(
 	"net/http"
 	"io/ioutil"
 	"encoding/xml"
+	"golang.org/x/net/html"
 )
 
 
@@ -45,6 +46,81 @@ func GetStories(body []byte) ([]Article, error) {
 	return rss.WSJ.Articles, nil
 }
 
+// Get article body from an http page
+func ExtractArticle(body *http.Response) (string, error){
+	parser := html.NewTokenizer(body.Body)
+	article := "done"
+	i := 0
+	for {
+		i++
+		token := parser.Next()
+		
+		switch {
+			case token == html.ErrorToken :
+				fmt.Println("found error token on first parser:", token, "\tloop is:", i)
+				fmt.Println("actual token is:", parser.Token())
+				return "", nil
+			case token == html.StartTagToken:
+				tmp := parser.Token()
+
+				isStartArticle := tmp.Data == "article"
+				if isStartArticle {
+					fmt.Println("found start of article")
+					// loop until we start to hit article tokens
+					for {
+						token = parser.Next()
+
+						switch {
+							case token == html.ErrorToken:
+								return "", nil
+							case token == html.StartTagToken:
+								tmp = parser.Token()
+								
+								isStartArticleBody := tmp.Data == "div"
+								// loop until we are at the first paragraph of the article body
+								if isStartArticleBody {
+									isStartArticleBody = false
+									for _, attr := range tmp.Attr {
+										if attr.Key == "class" && attr.Val == "clearfix byline-wrap" {
+											isStartArticleBody = true
+											break
+										}
+									}
+									if isStartArticleBody {
+										fmt.Println("hit inside the clearfix")
+										// now loop until the body is at the first paragraph tag
+										for {
+											token = parser.Next()
+											tmp = parser.Token()
+											
+											switch {
+												case token == html.ErrorToken:
+													return "", nil
+												case token == html.StartTagToken:
+													isStartArticleBody = tmp.Data == "p"
+													if isStartArticleBody {
+														parser.Next()
+														tmp = parser.Token()	
+														article = article + tmp.Data
+														return article, nil
+													}
+												case token == html.EndTagToken:
+													break
+											}
+										}
+										break // from the top for loop
+
+									}
+								}
+							}
+						}
+				}
+		}
+	}
+	return article, nil
+}
+
+
 // Request a page containing the article linked to
 func GetArticle(article Article) (string, error){
 	client := &http.Client{}
@@ -58,14 +134,8 @@ func GetArticle(article Article) (string, error){
 	}
 	
 	defer resp.Body.Close()	
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Oh nose, error reading body in get article")
-		return "", err
-	}
-
-	fmt.Println("article is:", string(body))
-	return "", nil
+	articleBody, err := ExtractArticle(resp)
+	return articleBody, err
 }
 
 func main(){
@@ -90,5 +160,6 @@ func main(){
 		return
 	}
 
-	GetArticle(articles[0])
+	articleBody, err :=	GetArticle(articles[0])
+	fmt.Println("article body is:", articleBody)	
 }
