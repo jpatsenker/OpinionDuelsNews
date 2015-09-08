@@ -1,45 +1,63 @@
 package main
 import (
 	"fmt"
+    "bufio"
     "os"
     "os/exec"
 	// "net/http"
 	// "net/url"
 	// "bytes"
 	// "io/ioutil"
-	// "strings"
+	"strings"
 
 	)
-func main() {
-	// apiUrl := "http://access.alchemyapi.com/calls/text/"
- //    resource := "/TextGetRankedKeywords/"
- //    data := url.Values{}
- //    data.Set("apikey", "39995101e65858870797a627e548b1522f5c74a8")
- //    data.Add("text", "this is an example")
- //    data.Add("sentiment", "1")
+func parseArticle(filepath string) (string, error) {
+    file, err := os.Open(filepath)
+    if(err != nil){
+        return "",err
+    }
+    defer file.Close()
 
- //    u, _ := url.ParseRequestURI(apiUrl)
- //    u.Path = resource
- //    urlStr := fmt.Sprintf("%v", u)
-    
- //    client := &http.Client{}
- //    r, _ := http.NewRequest("POST", urlStr, bytes.NewBufferString(data.Encode())) // <-- URL-encoded payload
- //    // r.Header.Add("Authorization", "auth_token=\"XXXXXXX\"")
- //    r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
- //    // r.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
-
- //    resp, _ := client.Do(r)
- //    fmt.Println(resp.Status)
+    var lines string
+    scanner := bufio.NewScanner(file)
+    for scanner.Scan(){
+        lines += " " + scanner.Text()
+    }
+    lines = strings.Replace(lines, " ", "%20", -1)
+    fmt.Println(lines)
+    return lines,nil
+}
+func KeywordAPI(filepath string, sentiment bool) (string, error){
     cmd := "curl"
-    args := []string{"--data", "apikey=39995101e65858870797a627e548b1522f5c74a8&text=hello%20my%20name%20is%20test","http://access.alchemyapi.com/calls/text/TextGetRankedKeywords"}
+    args := []string{"--data", "apikey=39995101e65858870797a627e548b1522f5c74a8","http://access.alchemyapi.com/calls/text/TextGetRankedKeywords"}
+    
+    lines, err := parseArticle(filepath)
+    if(err != nil){
+        return "",err
+    }
+    args[1] += "&text=" + lines
+
+    if sentiment {
+        args[1] += "&sentiment=1"
+    }
+
+    fmt.Println(args[1])
     out, err := exec.Command(cmd, args...).Output();
     if err != nil {
-        fmt.Fprintln(os.Stderr, err)
         os.Exit(1)
+        return "",err
     }
-    fmt.Println(string(out))
-
+    return string(out),nil
+           
+}
+func main() {
+    xml, err := KeywordAPI("./samplebody.txt",false)
+    if(err != nil){
+        fmt.Println(err)
+    }
+    fmt.Println(xml)
 }
 
 // key 39995101e65858870797a627e548b1522f5c74a8
 // curl --data "apikey=39995101e65858870797a627e548b1522f5c74a8&text=hello%20my%20name%20is%20test" http://access.alchemyapi.com/calls/text/TextGetRankedKeywords
+// http://www.alchemyapi.com/api/keyword/textc.html
