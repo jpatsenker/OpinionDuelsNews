@@ -6,31 +6,24 @@ import (
 	"fmt"
 )
 
-type WSJArticleInfo struct {
-	XMLName xml.Name `xml:"item"`
+type WSJArticle struct {
+	
 	Title string `xml:"title"`
 	Link string `xml:"link"`
 	Description string `xml:"description"`
-}
 
-func (article WSJArticleInfo) GetLink() string { return article.Link }
-func (article WSJArticleInfo) GetDescription() string { return article.Description }
-func (article WSJArticleInfo) GetTitle() string { return article.Title }
-
-type WSJArticle struct {
-	Info WSJArticleInfo
 	Data string
 }
 
-func (article WSJArticle) GetInfo() ArticleInfo { 
-	//tmp := ArticleInfo.(article.Info)
-	return article.Info 
-}
 
-func (article *WSJArticle) GetData() string { return article.Data }
+func (article WSJArticle) GetLink() string { return article.Link }
+func (article WSJArticle) GetDescription() string { return article.Description }
+func (article WSJArticle) GetTitle() string { return article.Title }
+
+func (article WSJArticle) GetData() string { return article.Data }
 func (article *WSJArticle) SetData(data string) { article.Data = data }
 
-func (article WSJArticle) DoParse(parser *html.Tokenizer) error {
+func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 	//parser := html.NewTokenizer(body.Body)
 	i := 0
 	for {
@@ -107,9 +100,15 @@ type WSJRSSChannel struct {
 	Articles []WSJArticle `xml:"item"`
 }
 
-func (channel WSJRSSChannel) GetArticles() []Article { 
-	tmp := []Article(channel.Articles)
-	return tmp //channel.Articles
+func (channel *WSJRSSChannel) GetArticle(slot int) Article {
+	if slot >= channel.GetNumArticles() {
+		return nil
+	}
+	return &channel.Articles[slot]
+}
+
+func (channel *WSJRSSChannel) GetNumArticles() int {
+	return len(channel.Articles)
 }
 
 type WSJRSS struct {
@@ -118,9 +117,14 @@ type WSJRSS struct {
 	RSSLink string
 }
 
-func (rss WSJRSS) GetLink() string { return rss.RSSLink }
+func (rss *WSJRSS) GetLink() string { return rss.RSSLink }
 
-func (rss WSJRSS) GetChannel() RSSChannel { 
-	tmp := rss.Channel
+func (rss *WSJRSS) GetChannel() RSSChannel { 
+	tmp := &rss.Channel
 	return tmp 
 }
+
+// make sure all the structs implement the interfaces
+var _ RSS = (*WSJRSS)(nil)
+var _ RSSChannel = (*WSJRSSChannel)(nil)
+var _ Article = (*WSJArticle)(nil)

@@ -1,24 +1,23 @@
 package main
 
 import(
-	"golang.org/x/net/html"
+	//"golang.org/x/net/html"
 )
 
-type ArticleInfo interface {
-	GetLink() string
-	GetDescription() string
-	GetTitle() string
-}
+
 
 // Generic article type
 // Gets body from an article link
 type Article interface {
-	GetInfo() ArticleInfo
 
-	DoParse(*html.Tokenizer) error
+	//DoParse(*html.Tokenizer) error
 
 	SetData(string)
 	GetData() string
+
+	GetLink() string
+	GetDescription() string
+	GetTitle() string
 }
 
 // Generic RSS feed
@@ -29,5 +28,6 @@ type RSS interface {
 }
 
 type RSSChannel interface {
-	GetArticles() []Article
+	GetArticle(int) Article
+	GetNumArticles() int
 }
