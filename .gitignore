@@ -26,6 +26,11 @@ _testmain.go
 *.test
 *.prof
 
+scraper/bin/*
+scraper/scr/*
+!scraper/fetcher/*
+!scraper/hello/*
+
 #####################################################
 # end go
 #####################################################
