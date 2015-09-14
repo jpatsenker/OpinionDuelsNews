@@ -1,18 +1,16 @@
-package main 
-
+package main
 
 import (
-	"golang.org/x/net/html"
 	"encoding/xml"
 	"fmt"
+	"golang.org/x/net/html"
 )
 
 // WSJ new source types
 
 type WSJArticle struct {
-	
-	Title string `xml:"title"`
-	Link string `xml:"link"`
+	Title       string `xml:"title"`
+	Link        string `xml:"link"`
 	Description string `xml:"description"`
 
 	// article body
@@ -20,21 +18,21 @@ type WSJArticle struct {
 }
 
 // TODO: add errors
-func (article WSJArticle) GetLink() string { return article.Link }
+func (article WSJArticle) GetLink() string        { return article.Link }
 func (article WSJArticle) GetDescription() string { return article.Description }
-func (article WSJArticle) GetTitle() string { return article.Title }
-func (article WSJArticle) GetData() string { return article.Data }
+func (article WSJArticle) GetTitle() string       { return article.Title }
+func (article WSJArticle) GetData() string        { return article.Data }
 
 // use ptrs for the next two because we want the article changed
 func (article *WSJArticle) SetData(data string) { article.Data = data }
 func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 
-	articleTagLoop:
+articleTagLoop:
 	for {
 		token := parser.Next()
-		
+
 		switch {
-		case token == html.ErrorToken :
+		case token == html.ErrorToken:
 			fmt.Println("OH NOSE!!!! ERROR before we hit the end")
 			return nil
 		case token == html.StartTagToken:
@@ -49,7 +47,7 @@ func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 	}
 
 	// loop until we start to hit article tokens
-	articleStartLoop:
+articleStartLoop:
 	for {
 		token := parser.Next()
 
@@ -58,7 +56,7 @@ func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 			return nil
 		case token == html.StartTagToken:
 			tmp := parser.Token()
-			
+
 			isStartArticleBody := tmp.Data == "div"
 			// loop until we are at the first paragraph of the article body
 			if isStartArticleBody {
@@ -70,14 +68,14 @@ func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 					}
 				}
 				if isStartArticleBody {
-					break articleStartLoop 
+					break articleStartLoop
 				}
 			}
 		}
 	}
 
 	// now loop until the body is at the first paragraph tag
-	articleBodyStartLoop:
+articleBodyStartLoop:
 	for {
 		token := parser.Next()
 		switch {
@@ -93,7 +91,7 @@ func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 	}
 
 	// loop until article is all the way grabbed
-	addParagraph := true 
+	addParagraph := true
 	for {
 		token := parser.Next()
 		switch {
@@ -108,7 +106,7 @@ func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 				newBody := article.GetData()
 				if addParagraph {
 					newBody = newBody + "\n" + tmp.Data
-				} else{
+				} else {
 					addParagraph = true
 					newBody = newBody + tmp.Data
 				}
@@ -136,7 +134,7 @@ func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 }
 
 type WSJRSSChannel struct {
-	XMLName xml.Name `xml:"channel"`
+	XMLName  xml.Name     `xml:"channel"`
 	Articles []WSJArticle `xml:"item"`
 }
 
@@ -154,7 +152,7 @@ func (channel *WSJRSSChannel) GetNumArticles() int {
 }
 
 type WSJRSS struct {
-	XMLName xml.Name `xml:"rss"`
+	XMLName xml.Name      `xml:"rss"`
 	Channel WSJRSSChannel `xml:"channel"`
 	RSSLink string
 	// TODO: actually set string to the value of the link
@@ -162,10 +160,10 @@ type WSJRSS struct {
 
 func (rss *WSJRSS) GetLink() string { return rss.RSSLink }
 
-func (rss *WSJRSS) GetChannel() RSSChannel { 
+func (rss *WSJRSS) GetChannel() RSSChannel {
 	// return a pointer to the channel, interfaces implicitly have ptrs if they are there
 	tmp := &rss.Channel
-	return tmp 
+	return tmp
 }
 
 // make sure all the structs implement the interfaces
