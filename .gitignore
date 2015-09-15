@@ -28,7 +28,7 @@ _testmain.go
 
 scraper/bin/*
 scraper/src/*
-!scraper/src/scraper/*
+!scraper/src/scraper/
 
 #####################################################
 # end go
