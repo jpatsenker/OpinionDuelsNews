@@ -27,9 +27,8 @@ _testmain.go
 *.prof
 
 scraper/bin/*
-scraper/scr/*
-!scraper/fetcher/*
-!scraper/hello/*
+scraper/src/*
+!scraper/src/scraper/*
 
 #####################################################
 # end go

@@ -1,9 +1,8 @@
-package main
+package fetcher
 
-import(
+import (
 	"golang.org/x/net/html"
 )
-
 
 /**
  * Types for scraping articles from a web source
@@ -14,7 +13,6 @@ import(
 // Generic article type
 // Gets body from an article link
 type Article interface {
-
 	DoParse(*html.Tokenizer) error
 
 	SetData(string)
