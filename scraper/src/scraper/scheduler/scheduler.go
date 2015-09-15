@@ -7,14 +7,13 @@ import (
 )
 
 // Used with the Scheduler to delay running tasks so a server doesn't get bombarded
-// Might want to control limits by website to make it harder to accidentally spam a website
+// Might want to control limits by website so its harder to accidentally spam a website
 type Schedulable interface {
 	DoWork()
 	GetDelay() int // seconds to run
 }
 
 // Implements sort.Sort
-// Lets you sort many different ways if you really want to
 // Syntax for sort is By(func).Sort(array)
 type SchedulableSorter struct {
 	queue []Schedulable
@@ -43,32 +42,36 @@ func (s *SchedulableSorter) Less(i, j int) bool {
 	return s.by(s.queue[i], s.queue[j])
 }
 
-// Sorts tasks from shortest time remaining to longest time
+// Sorts time remaining low -> high
 // Used by the scheduler
 func SortLowToHigh(s1, s2 Schedulable) bool {
 	return s1.GetDelay() < s2.GetDelay()
 }
 
-// Runs Schedulable tasks as they become ready to run
-// Doesn't use the tightest of timing
+// Manages schedulable tasks ie tasks that you want to run some time in the future
+// Scheduling burden is on the programmer, might want to create some tools to change that
+// Timing isn't very tight
 type Scheduler struct {
 	queue   []Schedulable    // sorted array of tasks to run
 	AddTask chan Schedulable // tasks are put on here when they are able to run
-	Quit    chan bool        // signal the scheduler to stop. It will keep running until there are no more overdue tasks
+	Quit    chan bool        // signal the scheduler to stop once no more tasks are ready
 	Ready   chan Schedulable // the next task to run. This needs to be buffered or deadlock will occur
 }
 
-// create and return a scheduler
+// Create and return a scheduler
 // NOTE: go figures out that you are returning a pointer to the local variable and puts it on the heap for you
 // queue size is how many tasks can be held TODO: check if this is fixed or can expand
 // bufferSize is how many tasks can be added to the queue each cycle.
-// 		if bufferSize < num tasks being added at once then some of the adds will block unless run as goroutines
-// 		choice of buffer size shouldn't make a huge difference
+// 	if bufferSize < num tasks being added at once then some of the adds will block unless run as goroutines
+// 	choice of buffer size shouldn't make a huge difference
 func MakeScheduler(queueSize, bufferSize int) *Scheduler {
-	return &Scheduler{make([]Schedulable, 0, queueSize), make(chan Schedulable, bufferSize), make(chan bool), make(chan Schedulable, 1)}
+	return &Scheduler{make([]Schedulable, 0, queueSize),
+		make(chan Schedulable, bufferSize),
+		make(chan bool),
+		make(chan Schedulable, 1)}
 }
 
-// threadsafe add, may block if AddTask is buffered. In this case, run it asynchronously as a goroutine:w
+// threadsafe add, may block if AddTask is buffered. In this case, run it asynchronously as a go routine
 func (scheduler *Scheduler) AddSchedulabe(schedulable Schedulable) {
 	scheduler.AddTask <- schedulable
 }
@@ -83,7 +86,7 @@ func (scheduler *Scheduler) Stop() {
 	scheduler.Quit <- true
 }
 
-// handles running all the scheduled tasks. Start this asynchronously as a go routine
+// Body of the scheduler. Manage it with the start and stop functions
 // TODO: change constants to reflect seconds, not ms (used ms for testing)
 func (scheduler *Scheduler) Run() {
 	for {
