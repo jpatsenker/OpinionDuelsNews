@@ -26,6 +26,14 @@ _testmain.go
 *.test
 *.prof
 
+scraper/bin/*
+scraper/src/*
+!scraper/src/scraper/
+
 #####################################################
 # end go
 #####################################################
+
+#### for vim:
+*.swp
+
