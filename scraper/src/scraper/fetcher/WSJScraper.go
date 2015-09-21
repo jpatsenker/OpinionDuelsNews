@@ -158,7 +158,7 @@ type WSJRSS struct {
 	// TODO: actually set string to the value of the link
 }
 
-func (rss *WSJRSS) GetLink() string { return rss.RSSLink }
+func (rss *WSJRSS) GetLink() string { return "http://www.wsj.com/xml/rss/3_7041.xml" }
 
 func (rss *WSJRSS) GetChannel() RSSChannel {
 	// return a pointer to the channel, interfaces implicitly have ptrs if they are there

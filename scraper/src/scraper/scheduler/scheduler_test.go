@@ -29,8 +29,16 @@ func (schedulable TestSchedulable) GetDelay() int {
 	return int(del)
 }
 
+func (schedulable TestSchedulable) IsLoopable() bool {
+	return false
+}
+
+func (schedulable TestSchedulable) ResetTimer() {
+	schedulable.start = time.Now()
+}
+
 // run the task
-func (schedulable TestSchedulable) DoWork() {
+func (schedulable TestSchedulable) DoWork(scheduler *Scheduler) {
 	fmt.Println("doing task:", schedulable.msg)
 }
 

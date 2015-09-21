@@ -9,8 +9,11 @@ import (
 // Used with the Scheduler to delay running tasks so a server doesn't get bombarded
 // Might want to control limits by website so its harder to accidentally spam a website
 type Schedulable interface {
-	DoWork()
-	GetDelay() int // seconds to run
+	DoWork(*Scheduler)     // runs the task
+	GetTimeRemaining() int // seconds to run
+	SetTimeRemaining(int)  // sets the number of seconds for the task to run
+	IsLoopable() bool      // does the schedulable get removed once run
+	// if something is loopable it has to reset the loop timer when it starts
 }
 
 // Implements sort.Sort
@@ -45,7 +48,7 @@ func (s *SchedulableSorter) Less(i, j int) bool {
 // Sorts time remaining low -> high
 // Used by the scheduler
 func SortLowToHigh(s1, s2 Schedulable) bool {
-	return s1.GetDelay() < s2.GetDelay()
+	return s1.GetTimeRemaining() < s2.GetTimeRemaining()
 }
 
 // Manages schedulable tasks ie tasks that you want to run some time in the future
@@ -53,9 +56,9 @@ func SortLowToHigh(s1, s2 Schedulable) bool {
 // Timing isn't very tight
 type Scheduler struct {
 	queue   []Schedulable    // sorted array of tasks to run
-	AddTask chan Schedulable // tasks are put on here when they are able to run
-	Quit    chan bool        // signal the scheduler to stop once no more tasks are ready
-	Ready   chan Schedulable // the next task to run. This needs to be buffered or deadlock will occur
+	addTask chan Schedulable // tasks are put on here when they are able to run
+	quit    chan bool        // signal the scheduler to stop once no more tasks are ready
+	ready   chan Schedulable // the next task to run. This needs to be buffered or deadlock will occur
 }
 
 // Create and return a scheduler
@@ -71,9 +74,9 @@ func MakeScheduler(queueSize, bufferSize int) *Scheduler {
 		make(chan Schedulable, 1)}
 }
 
-// threadsafe add, may block if AddTask is buffered. In this case, run it asynchronously as a go routine
-func (scheduler *Scheduler) AddSchedulabe(schedulable Schedulable) {
-	scheduler.AddTask <- schedulable
+// threadsafe add, may block if addTask is buffered. In this case, run it asynchronously as a go routine
+func (scheduler *Scheduler) AddSchedulable(schedulable Schedulable) {
+	scheduler.addTask <- schedulable
 }
 
 // start running the scheduler asynchronously
@@ -83,7 +86,7 @@ func (scheduler *Scheduler) Start() {
 
 // stop the scheduler
 func (scheduler *Scheduler) Stop() {
-	scheduler.Quit <- true
+	scheduler.quit <- true
 }
 
 // Body of the scheduler. Manage it with the start and stop functions
@@ -96,7 +99,7 @@ func (scheduler *Scheduler) Run() {
 		for {
 			// add tasks from buffered channel to queue until all waiting tasks are added
 			select {
-			case s := <-scheduler.AddTask:
+			case s := <-scheduler.addTask:
 				scheduler.queue = append(scheduler.queue, s)
 				didAdd = true
 			default:
@@ -112,12 +115,16 @@ func (scheduler *Scheduler) Run() {
 
 		// get the next task to run
 		// TODO: change cycletime to seconds once done testing
-		var cycleTime int = 10 // how often the scheduler loops while idle
+		var cycleTime int = 1 // how often the scheduler loops while idle
 		if len(scheduler.queue) > 0 {
-			if scheduler.queue[0].GetDelay() < cycleTime {
+			if scheduler.queue[0].GetTimeRemaining() < cycleTime {
 				// if a task will be ready this cycle, add run it
-				scheduler.Ready <- scheduler.queue[0]
+				scheduler.ready <- scheduler.queue[0]
 
+				if scheduler.queue[0].IsLoopable() {
+					// if its loopable, reset the timer and put it on the back
+					go scheduler.AddSchedulable(scheduler.queue[0])
+				}
 				// remove the first element
 				// do it this way to make sure we avoid mem leaks
 				// (something could be sitting in an unused part of the queue and not get cleared)
@@ -131,16 +138,15 @@ func (scheduler *Scheduler) Run() {
 		// stop running if we got signal to stop and no tasks are waiting
 		// if no tasks got run wait one timestep (cycleTime) to not burn CPU
 		select {
-		case task := <-scheduler.Ready:
+		case task := <-scheduler.ready:
 			// assume task gets removed from queue when it is put into the channel
-			fmt.Println("running:", task.GetDelay())
-			go task.DoWork()
-		case <-scheduler.Quit:
+			fmt.Println("running:", task.GetTimeRemaining())
+			go task.DoWork(scheduler)
+		case <-scheduler.quit:
 			fmt.Println("Done with scheduler")
 			return
 		default:
-			// TODO: change this to seconds when out of testing
-			time.Sleep(time.Duration(cycleTime) * time.Millisecond)
+			time.Sleep(time.Duration(cycleTime) * time.Second)
 		}
 	}
 }
