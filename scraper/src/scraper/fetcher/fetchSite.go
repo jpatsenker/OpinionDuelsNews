@@ -33,7 +33,7 @@ func DoGetArticle(article Article) error {
 	req.Header.Add("Referer", "https://www.google.com")
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("oh nose, err with get article http request")
+		fmt.Println("oh nose, err with get article http request:", err)
 		return err
 	}
 

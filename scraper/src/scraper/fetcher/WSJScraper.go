@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"golang.org/x/net/html"
+	"strings"
 )
 
 // WSJ new source types
@@ -25,8 +26,11 @@ func (article WSJArticle) GetData() string        { return article.Data }
 
 // use ptrs for the next two because we want the article changed
 func (article *WSJArticle) SetData(data string) { article.Data = data }
+
 func (article *WSJArticle) DoParse(parser *html.Tokenizer) error {
 
+	// find the start of the article
+	// starts at the top of the html body, ends at the article tag
 articleTagLoop:
 	for {
 		token := parser.Next()
@@ -40,13 +44,14 @@ articleTagLoop:
 
 			isStartArticle := tmp.Data == "article"
 			if isStartArticle {
-				fmt.Println("found start of article")
 				break articleTagLoop
 			}
 		}
 	}
 
-	// loop until we start to hit article tokens
+	// find the article header, which has author, time etc
+	// starts at the article tag, ends at the article header
+	// TODO: get author info and such here
 articleStartLoop:
 	for {
 		token := parser.Next()
@@ -74,7 +79,8 @@ articleStartLoop:
 		}
 	}
 
-	// now loop until the body is at the first paragraph tag
+	// find the start of the article
+	// starts at the end of the article header, ends at the first article paragraph
 articleBodyStartLoop:
 	for {
 		token := parser.Next()
@@ -90,45 +96,76 @@ articleBodyStartLoop:
 		}
 	}
 
-	// loop until article is all the way grabbed
-	addParagraph := true
+	// pull the article out of the html
+	// starts at first paragraph, returns at the end of the article
+	isInParagraph := true // true because we start inside the first paragraph
+	depth := 1            // one because this loop starts at first paragraph
 	for {
 		token := parser.Next()
 		switch {
 		case token == html.ErrorToken:
+			fmt.Println("hit err, depth is:", depth)
 			return nil
 		case token == html.StartTagToken:
+			depth++
 			tmp := parser.Token()
+
 			isParagraph := tmp.Data == "p"
 			if isParagraph {
-				parser.Next()
-				tmp = parser.Token()
-				newBody := article.GetData()
-				if addParagraph {
-					newBody = newBody + "\n" + tmp.Data
-				} else {
-					addParagraph = true
-					newBody = newBody + tmp.Data
+				// start of a new paragraph
+				if depth != 1 {
+					fmt.Println("ERROR: hit new paragraph while depth != 0")
 				}
-
-				article.SetData(newBody)
+				if isInParagraph {
+					fmt.Println("ERROR: hit unexpected new paragraph tag while in paragraph")
+				}
+				isInParagraph = true
 			}
 
+			// text can have embeded links
 			isLink := tmp.Data == "a"
 			if isLink {
+				if !isInParagraph {
+					fmt.Println("ERROR: hit unexpected link outside of a paragraph")
+					continue
+				}
+
+				// if we are in a paragraph, append the link name
 				parser.Next()
 				tmp = parser.Token()
 				newBody := article.GetData() + tmp.Data
 				article.SetData(newBody)
-				// TODO: check if this is ever at the end of a paragraph....
-				addParagraph = false
 			}
 		case token == html.EndTagToken:
-			isEnd := parser.Token().Data == "div"
-			if isEnd {
+			depth--
+			tmp := parser.Token().Data
+			if depth == -1 {
+				// done with article when we are at a higher level than it
 				return nil
 			}
+
+			if tmp == "p" {
+				// add a paragraph and trim the space
+				article.SetData(strings.TrimSpace(article.GetData() + "\n"))
+				isInParagraph = false
+			}
+
+		default:
+			if !isInParagraph {
+				// if not inside a text paragraph, continue on
+				continue
+			}
+
+			// get the paragraph text and append it to the article body
+			// TODO: look into using a string builder instead of adding things on
+			tmp := parser.Token()
+			newBody := article.GetData()
+			// add a space on the left just in case there is a comment or something
+			newBody = newBody + strings.TrimSpace(tmp.Data) + " "
+
+			article.SetData(newBody)
 		}
+
 	}
 	return nil
 }

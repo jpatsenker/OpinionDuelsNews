@@ -15,7 +15,7 @@ func init() {
 	}
 
 	config.InitConfig()
-	err = config.ReadFile(f)
+	err = config.ReadFile("default", f)
 
 	if err != nil {
 		panic(err)
@@ -34,7 +34,7 @@ func TestRead(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		got := config.Get(c.key)
+		got := config.From("default").Get(c.key)
 		if got != c.want {
 			t.Errorf("config[%q] == %v, want %v", c.key, got, c.want)
 		}
@@ -42,20 +42,20 @@ func TestRead(t *testing.T) {
 }
 
 func TestGetInt(t *testing.T) {
-	val, _ := config.GetInt("one")
+	val, _ := config.From("default").GetInt("one")
 	val = val * 2
 	if val != 2 {
 		t.Errorf("muling failed: %v", val)
 	}
 
-	boo, _ := config.GetBool("true")
+	boo, _ := config.From("default").GetBool("true")
 	if boo == false {
 		t.Errorf("messed up getting bool")
 	}
 }
 
 func TestGetArr(t *testing.T) {
-	val, _ := config.GetArray("array")
+	val, _ := config.From("default").GetArray("array")
 	cases := []struct {
 		index int
 		value string
@@ -73,7 +73,6 @@ func TestGetArr(t *testing.T) {
 }
 
 func TestGetNested(t *testing.T) {
-	val, _ := config.Get("nest").(map[string]interface{})
 	cases := []struct {
 		key  string
 		want interface{}
@@ -83,13 +82,27 @@ func TestGetNested(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		got := val[c.key]
+		got := config.From("default").Nested("nest").Get(c.key)
 		if got != c.want {
 			t.Errorf("config[%q] == %v, want %v", c.key, got, c.want)
 		}
 	}
 }
 
+func TestDoubleNested(t *testing.T) {
+	val := config.From("default").Nested("double_nest").Nested("inner").Get("val")
+	if val != "a" {
+		t.Errorf("expected %v, got %v", "a", val)
+	}
+}
+func TestBadNested(t *testing.T) {
+	t.Skip("skipping until panic is updated to be less panic-y")
+	val := config.From("default").Nested("one")
+	if val != nil {
+		t.Errorf("failed to handle val properly")
+	}
+
+}
 func TestMultiRead(t *testing.T) {
 	f, err := os.Open("test_config2.json")
 	defer f.Close()
@@ -98,7 +111,7 @@ func TestMultiRead(t *testing.T) {
 		panic(err)
 	}
 
-	err = config.ReadFile(f)
+	err = config.ReadFile("other", f)
 
 	if err != nil {
 		panic(err)
@@ -108,15 +121,12 @@ func TestMultiRead(t *testing.T) {
 		key  string
 		want interface{}
 	}{
-		{"one", float64(1)},
-		{"two", "2"},
-		{"true", true},
 		{"three", float64(3)},
 		{"four", "four"},
 	}
 
 	for _, c := range cases {
-		got := config.Get(c.key)
+		got := config.From("other").Get(c.key)
 		if got != c.want {
 			t.Errorf("config[%q] == %v, want %v", c.key, got, c.want)
 		}
@@ -124,7 +134,7 @@ func TestMultiRead(t *testing.T) {
 }
 
 func TestGetMissing(t *testing.T) {
-	val := config.Get("ten")
+	val := config.From("other").Get("ten")
 	if val != nil {
 		t.Errorf("config[ten] == %v, want nil", val)
 	}
