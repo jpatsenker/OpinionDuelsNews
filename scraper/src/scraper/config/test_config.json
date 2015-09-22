@@ -1,0 +1,12 @@
+{
+	"one":1,
+	"two":"2",
+	"true":true, 
+	"array":["a", "b", "c"],
+	"nest":{"letter":"a", "num":1},
+	"double_nest":{
+		"inner":{
+			"val":"a"
+		}
+	}
+}
