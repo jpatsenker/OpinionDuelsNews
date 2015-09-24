@@ -17,9 +17,8 @@ type SchedulableRSS struct {
 }
 
 func (rss *SchedulableRSS) DoWork(scheduler *scheduler.Scheduler) {
-	rss.start = time.Now() // reset the timer at the top of the loop
+	fmt.Println("goint to run RSS")
 	resp, err := http.Get(rss.RSSFeed.GetLink())
-	fmt.Println("link is:", rss.RSSFeed.GetLink())
 	if err != nil {
 		// TODO: error checking here
 		fmt.Println("error getting RSS:", err)
@@ -29,12 +28,14 @@ func (rss *SchedulableRSS) DoWork(scheduler *scheduler.Scheduler) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Println("error reading body")
 		// TODO: error handling
 		return
 	}
 
 	err = GetStories(rss.RSSFeed, body)
 	if err != nil {
+		fmt.Println("error getting stories")
 		return
 	}
 
@@ -42,8 +43,10 @@ func (rss *SchedulableRSS) DoWork(scheduler *scheduler.Scheduler) {
 	// TODO: use config file to control the timing here
 	toSchedule := CreateSchedulableArticle(rss.RSSFeed.GetChannel().GetArticle(0), 1)
 	go scheduler.AddSchedulable(toSchedule)
-	toSchedule = CreateSchedulableArticle(rss.RSSFeed.GetChannel().GetArticle(1), 2)
-	go scheduler.AddSchedulable(toSchedule)
+	if rss.IsLoopable() && scheduler.IsRunning() {
+		rss.start = time.Now()
+		go scheduler.AddSchedulable(rss)
+	}
 }
 
 func (rss *SchedulableRSS) GetTimeRemaining() int {
@@ -56,7 +59,7 @@ func (rss *SchedulableRSS) GetTimeRemaining() int {
 
 func (rss *SchedulableRSS) IsLoopable() bool {
 	// TODO: make this true once out of testing
-	return false
+	return true
 }
 
 func (rss *SchedulableRSS) SetTimeRemaining(remaining int) {

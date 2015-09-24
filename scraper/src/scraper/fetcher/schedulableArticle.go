@@ -15,7 +15,7 @@ type SchedulableArticle struct {
 }
 
 func (article *SchedulableArticle) DoWork(scheduler *scheduler.Scheduler) {
-	article.start = time.Now()
+	fmt.Println("goint to get article")
 	err := DoGetArticle(article.Article)
 	if err != nil {
 		fmt.Println("error getting article")
