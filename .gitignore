@@ -30,6 +30,7 @@ scraper/bin/*
 scraper/src/*
 !scraper/src/scraper/
 !scraper/src/github.com/golang/mock/
+!scraper/src/golang.org/
 
 #####################################################
 # end go
