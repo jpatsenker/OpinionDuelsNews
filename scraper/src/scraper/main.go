@@ -6,6 +6,6 @@ import (
 )
 
 func main() {
-	fmt.Println("hello world main")
+	// go call hello from the test hello package
 	hello.Hello()
 }
