@@ -29,6 +29,7 @@ _testmain.go
 scraper/bin/*
 scraper/src/*
 !scraper/src/scraper/
+!scraper/src/github.com/golang/mock/
 
 #####################################################
 # end go

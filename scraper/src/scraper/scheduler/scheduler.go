@@ -55,10 +55,11 @@ func SortLowToHigh(s1, s2 Schedulable) bool {
 // Scheduling burden is on the programmer, might want to create some tools to change that
 // Timing isn't very tight
 type Scheduler struct {
-	queue   []Schedulable    // sorted array of tasks to run
-	addTask chan Schedulable // tasks are put on here when they are able to run
-	quit    chan bool        // signal the scheduler to stop once no more tasks are ready
-	ready   chan Schedulable // the next task to run. This needs to be buffered or deadlock will occur
+	queue     []Schedulable    // sorted array of tasks to run
+	addTask   chan Schedulable // tasks are put on here when they are able to run
+	quit      chan bool        // signal the scheduler to stop once no more tasks are ready
+	ready     chan Schedulable // the next task to run. This needs to be buffered or deadlock will occur
+	isRunning bool             // if the scheduler is running
 }
 
 // Create and return a scheduler
@@ -71,7 +72,8 @@ func MakeScheduler(queueSize, bufferSize int) *Scheduler {
 	return &Scheduler{make([]Schedulable, 0, queueSize),
 		make(chan Schedulable, bufferSize),
 		make(chan bool),
-		make(chan Schedulable, 1)}
+		make(chan Schedulable, 1),
+		false}
 }
 
 // threadsafe add, may block if addTask is buffered. In this case, run it asynchronously as a go routine
@@ -89,9 +91,14 @@ func (scheduler *Scheduler) Stop() {
 	scheduler.quit <- true
 }
 
+func (scheduler *Scheduler) IsRunning() bool {
+	return scheduler.isRunning
+}
+
 // Body of the scheduler. Manage it with the start and stop functions
 // TODO: change constants to reflect seconds, not ms (used ms for testing)
 func (scheduler *Scheduler) Run() {
+	scheduler.isRunning = true
 	for {
 		// add any new tasks
 		didAdd := false // keep track of adds so we only sort when we need to
@@ -121,10 +128,6 @@ func (scheduler *Scheduler) Run() {
 				// if a task will be ready this cycle, add run it
 				scheduler.ready <- scheduler.queue[0]
 
-				if scheduler.queue[0].IsLoopable() {
-					// if its loopable, reset the timer and put it on the back
-					go scheduler.AddSchedulable(scheduler.queue[0])
-				}
 				// remove the first element
 				// do it this way to make sure we avoid mem leaks
 				// (something could be sitting in an unused part of the queue and not get cleared)
@@ -143,6 +146,7 @@ func (scheduler *Scheduler) Run() {
 			fmt.Println("running:", task.GetTimeRemaining())
 			go task.DoWork(scheduler)
 		case <-scheduler.quit:
+			scheduler.isRunning = false
 			fmt.Println("Done with scheduler")
 			return
 		default:
