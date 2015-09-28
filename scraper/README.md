@@ -1,21 +1,25 @@
-setup:
+Setup
+=========
 
-1) install + setup go
-2) set go path. For me it is: export GOPATH=$HOME/Documents/OpinionDuelsNews/scraper
-3) set path. For me it is: export PATH=$PATH:$GOPATH/bin
-4) can go ahead and goinstall from there 
+To clone repo: git clone https://github.com/jpatsenker/Opinionated.git
 
+Use bash script to setup enviroment variables: . doSetup.sh
 
-TODO:
+If there is a problem with any of the packages, fix them with rebuildPackages.sh
 
-List of things to work on for the scraper ( in addition to testing, refactoring etc)
+####Getting the repo
 
-Getting articles -- general outline is done, need to add more news sources though
-Scheduling article requests
-Storing articles
-Error handling
+1) clone (see above)  
+2) create local copy of develop branch (git checkout -b develop origin/develop)   
+3) create your branch off of develop (git checkout -b (your-name)-develop)  
 
-Secondary things to add: 
-Spoofing IP, user agent etc. to make it harder to stop the scraping
-Getting pages with pretty HTML
+####Pushing
 
+1) Push your branch to the repo with git push origin (your-name)-develop  
+2) Message group chat about merging  
+
+####Once your updates get merged
+
+1) change to develop branch (git checkout develop)  
+2) pull from develop (git pull origin develop)  
+3) merge develop back into your branch to get any updates (git checkout (your-name)-develop; git merge develop)  
