@@ -7,7 +7,7 @@ import (
 	// "net/http"
 	// "net/url"
 	// "bytes"
-	// "io/ioutil"
+	"io/ioutil"
 	"strings"
 
 	)
@@ -24,10 +24,10 @@ func parseArticle(filepath string) (string, error) {
         lines += " " + scanner.Text()
     }
     lines = strings.Replace(lines, " ", "%20", -1)
-    fmt.Println(lines)
+    // fmt.Println(lines)
     return lines,nil
 }
-func KeywordAPI(filepath string, sentiment bool) (string, error){
+func keywordAPI(filepath string, sentiment bool) (string, error){
     cmd := "curl"
     args := []string{"--data", "apikey=39995101e65858870797a627e548b1522f5c74a8","http://access.alchemyapi.com/calls/text/TextGetRankedKeywords"}
     
@@ -41,7 +41,7 @@ func KeywordAPI(filepath string, sentiment bool) (string, error){
         args[1] += "&sentiment=1"
     }
 
-    fmt.Println(args[1])
+    // fmt.Println(args[1])
     out, err := exec.Command(cmd, args...).Output();
     if err != nil {
         os.Exit(1)
@@ -50,12 +50,44 @@ func KeywordAPI(filepath string, sentiment bool) (string, error){
     return string(out),nil
            
 }
-func main() {
-    xml, err := KeywordAPI("./samplebody.txt",false)
+func taxonomyAPI(filepath string) (string, error){
+    cmd := "curl"
+    args := []string{"--data", "apikey=39995101e65858870797a627e548b1522f5c74a8","http://gateway-a.watsonplatform.net/calls/text/TextGetRankedTaxonomy"}
+    
+    lines, err := parseArticle(filepath)
     if(err != nil){
-        fmt.Println(err)
+        return "",err
     }
-    fmt.Println(xml)
+    args[1] += "&text=" + lines
+
+    fmt.Println(args[1])
+    out, err := exec.Command(cmd, args...).Output();
+    if err != nil {
+        os.Exit(1)
+        return "",err
+    }
+    return string(out),nil
+}
+
+
+func main() {
+    keyxmlpath := "testkeyword.xml"
+    xml1, err := keywordAPI("./samplebody.txt",false)
+    if(err != nil){
+        panic(err)
+    }
+    // fmt.Println(xml1)
+    err = ioutil.WriteFile(keyxmlpath, []byte(xml1), 0644)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("wrote keyword xml to " + keyxmlpath)
+
+    // xml2, err := taxonomyAPI("./samplebody.txt")
+    // if(err != nil){
+    //     fmt.Println(err)
+    // }
+    // fmt.Println(xml2)
 }
 
 // key 39995101e65858870797a627e548b1522f5c74a8
